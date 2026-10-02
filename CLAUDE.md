@@ -34,6 +34,13 @@ Java 21, Spring Boot 3.x, Maven (dùng `mvnw`), JUnit 5 + Mockito, Docker. Tiề
 
 ## Tiến độ
 - [ ] Tuần 1 – Ngày 1: dựng repo, core-mock API tra cứu tài khoản, @RestControllerAdvice, 3 test
+  - [x] Môi trường: Temurin JDK 21, IntelliJ IDEA 2026.2; core-mock Boot 3.5.16, package `com.tellerchannel.coremock`, port 8081 (`application.properties`)
+  - [x] `Account` record (BigDecimal), `AccountNotFoundException`, `AccountService` (ConcurrentHashMap, seed trong constructor)
+  - [x] Unit test thuần `AccountServiceTest` (2 test pass)
+  - [ ] `AccountController` GET `/core/accounts/{accountNo}` (constructor injection)
+  - [ ] `@RestControllerAdvice` → ProblemDetail 404, `code=ACCT_NOT_FOUND`
+  - [ ] `@WebMvcTest` (tìm thấy / không tìm thấy), dùng `@MockitoBean`
+  - Đã học: record vs static, checked/unchecked exception, check-then-act, `BigDecimal.equals` so cả scale → dùng `compareTo`, thứ tự `assertEquals(expected, actual)`, Conventional Commits, nhánh feature + PR
 (Cập nhật mục này sau mỗi buổi.)
 
 ## Quy tắc làm việc với Claude
