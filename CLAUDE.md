@@ -33,14 +33,16 @@ Java 21, Spring Boot 3.x, Maven (dùng `mvnw`), JUnit 5 + Mockito, Docker. Tiề
 - Tuần 3: tracing + RCA, Kafka/UI, Docker, README, cập nhật CV, luyện phỏng vấn.
 
 ## Tiến độ
-- [ ] Tuần 1 – Ngày 1: dựng repo, core-mock API tra cứu tài khoản, @RestControllerAdvice, 3 test
+- [x] Tuần 1 – Ngày 1: dựng repo, core-mock API tra cứu tài khoản, @RestControllerAdvice, 3 test
   - [x] Môi trường: Temurin JDK 21, IntelliJ IDEA 2026.2; core-mock Boot 3.5.16, package `com.tellerchannel.coremock`, port 8081 (`application.properties`)
   - [x] `Account` record (BigDecimal), `AccountNotFoundException`, `AccountService` (ConcurrentHashMap, seed trong constructor)
   - [x] Unit test thuần `AccountServiceTest` (2 test pass)
-  - [ ] `AccountController` GET `/core/accounts/{accountNo}` (constructor injection)
-  - [ ] `@RestControllerAdvice` → ProblemDetail 404, `code=ACCT_NOT_FOUND`
-  - [ ] `@WebMvcTest` (tìm thấy / không tìm thấy), dùng `@MockitoBean`
+  - [x] `AccountController` GET `/core/accounts/{accountNo}` (constructor injection)
+  - [x] `GlobalExceptionHandler` (`@RestControllerAdvice`) → ProblemDetail 404, `code=ACCT_NOT_FOUND`, `application/problem+json`
+  - [x] `AccountControllerTest` (`@WebMvcTest` + `@MockitoBean`): 200 / 404 — tổng 5 test xanh
   - Đã học: record vs static, checked/unchecked exception, check-then-act, `BigDecimal.equals` so cả scale → dùng `compareTo`, thứ tự `assertEquals(expected, actual)`, Conventional Commits, nhánh feature + PR
+  - Đã học (buổi 2): luồng DispatcherServlet → controller, `@ExceptionHandler` local vs `@RestControllerAdvice` global, 500 vs 404 và ý nghĩa retry, slice test `@WebMvcTest`, matcher phải nằm trong `andExpect` (assert "giả" vẫn xanh), sửa kỳ vọng thành sai để chứng minh assert chạy
+- [ ] Tuần 1 – Ngày 2: (chưa lên kế hoạch) — gợi ý: validate định dạng số tài khoản (400), API hạch toán/chuyển khoản ở core-mock
 (Cập nhật mục này sau mỗi buổi.)
 
 ## Quy tắc làm việc với Claude
