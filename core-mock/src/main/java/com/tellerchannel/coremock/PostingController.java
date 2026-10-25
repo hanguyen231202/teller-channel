@@ -15,14 +15,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostingController {
 
     private final PostingService postingService;
+    private final ChaosService chaosService;
 
-    public PostingController(PostingService postingService) {
+    public PostingController(PostingService postingService, ChaosService chaosService) {
         this.postingService = postingService;
+        this.chaosService = chaosService;
     }
 
     /** 201 khi vừa hạch toán, 200 khi là lệnh trùng (trả lại bút toán cũ). */
     @PostMapping
     public ResponseEntity<Posting> post(@Valid @RequestBody PostingRequest request) {
+        chaosService.beforePosting();
         PostingService.PostingResult result = postingService.post(request);
         HttpStatus status = result.replayed() ? HttpStatus.OK : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(result.posting());
@@ -30,6 +33,7 @@ public class PostingController {
 
     @GetMapping("/{referenceNo}")
     public Posting get(@PathVariable String referenceNo) {
+        chaosService.beforeInquiry();
         return postingService.findByReference(referenceNo)
                 .orElseThrow(() -> new CoreBusinessException(HttpStatus.NOT_FOUND, "POSTING_NOT_FOUND",
                         "No posting with reference " + referenceNo));

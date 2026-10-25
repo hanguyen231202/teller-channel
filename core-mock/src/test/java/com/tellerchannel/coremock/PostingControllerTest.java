@@ -28,6 +28,9 @@ class PostingControllerTest {
     @MockitoBean
     PostingService postingService;
 
+    @MockitoBean
+    ChaosService chaosService;
+
     private static final String BODY = """
             {"referenceNo":"TC001","accountNo":"23122002","direction":"DEBIT",
              "amount":500000,"currency":"VND","description":"Rut tien"}

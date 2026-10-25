@@ -22,6 +22,9 @@ class AccountControllerTest {
     @MockitoBean
     AccountService accountService;
 
+    @MockitoBean
+    ChaosService chaosService;
+
     @Test
     void getAccount_existing_returns200WithBody() throws Exception {
         when(accountService.findByAccountNo("23122002")).thenReturn(new Account("23122002", "NGUYEN THANH HA", "VND", new BigDecimal("1500000"), AccountStatus.ACTIVE));

@@ -22,6 +22,15 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    /** Lỗi kỹ thuật (giả lập): 503 báo cho kênh biết đây là lỗi có thể thử lại / cần đối soát. */
+    @ExceptionHandler(CoreUnavailableException.class)
+    public ProblemDetail handleUnavailable(CoreUnavailableException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        pd.setTitle("Service unavailable");
+        pd.setProperty("code", "CORE_UNAVAILABLE");
+        return pd;
+    }
+
     /**
      * Lỗi validate tham số (@PathVariable, @RequestParam) từ Spring 6.1+.
      * 400 = lỗi phía người gọi, gửi lại y nguyên cũng vô ích nên không retry.
