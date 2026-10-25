@@ -44,6 +44,15 @@
 			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
 		</dependency>
 
+		<!-- Tracing: mỗi request có traceId, tự truyền sang service khác qua header, gửi span lên Zipkin -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-brave</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.zipkin.reporter2</groupId>
+			<artifactId>zipkin-reporter-brave</artifactId>
+		</dependency>
 		<!-- Flyway quản lý schema bằng file SQL có đánh version -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
