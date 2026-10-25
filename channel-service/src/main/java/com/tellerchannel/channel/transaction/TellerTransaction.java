@@ -1,5 +1,6 @@
 package com.tellerchannel.channel.transaction;
 
+import com.tellerchannel.channel.common.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -117,6 +119,86 @@ public class TellerTransaction {
         t.createdAt = now;
         t.updatedAt = now;
         return t;
+    }
+
+    // ---- Hành vi nghiệp vụ: entity tự giữ quy tắc của nó, service không set status trực tiếp ----
+
+    /** GDV gửi duyệt. Chỉ chính người lập mới được gửi. */
+    public void submit(String actor, Instant now) {
+        if (!makerId.equals(actor)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "NOT_TRANSACTION_MAKER",
+                    "Only the maker (" + makerId + ") can submit this transaction");
+        }
+        moveTo(TransactionStatus.PENDING_APPROVAL, now);
+        submittedAt = now;
+    }
+
+    /**
+     * KSV duyệt → ĐÃ GỬI CORE. Nguyên tắc bốn mắt: người duyệt phải khác người lập.
+     * Trạng thái này được COMMIT trước khi gọi core (xem TransactionService.approve).
+     */
+    public void approve(String checker, Instant now) {
+        requireDifferentFromMaker(checker);
+        moveTo(TransactionStatus.SENT_TO_CORE, now);
+        checkerId = checker;
+        approvedAt = now;
+        sentToCoreAt = now;
+    }
+
+    public void reject(String checker, String reason, Instant now) {
+        requireDifferentFromMaker(checker);
+        moveTo(TransactionStatus.REJECTED, now);
+        checkerId = checker;
+        rejectReason = reason;
+        completedAt = now;
+    }
+
+    public void markSuccess(String postingId, Instant now) {
+        moveTo(TransactionStatus.SUCCESS, now);
+        corePostingId = postingId;
+        coreErrorCode = null;
+        coreErrorMessage = null;
+        completedAt = now;
+    }
+
+    public void markFailed(String errorCode, String errorMessage, Instant now) {
+        moveTo(TransactionStatus.FAILED, now);
+        coreErrorCode = errorCode;
+        coreErrorMessage = truncate(errorMessage, 500);
+        completedAt = now;
+    }
+
+    public void markUnknown(String reason, Instant now) {
+        moveTo(TransactionStatus.UNKNOWN, now);
+        coreErrorCode = "NO_RESPONSE";
+        coreErrorMessage = truncate(reason, 500);
+    }
+
+    /** Đối soát đã hỏi core nhưng chưa có câu trả lời chắc chắn. */
+    public void recordReconcileAttempt(Instant now) {
+        reconcileAttempts++;
+        lastReconcileAt = now;
+        updatedAt = now;
+    }
+
+    private void requireDifferentFromMaker(String checker) {
+        if (makerId.equals(checker)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "SELF_APPROVAL_NOT_ALLOWED",
+                    "Checker must be different from maker");
+        }
+    }
+
+    private void moveTo(TransactionStatus next, Instant now) {
+        if (!status.canTransitionTo(next)) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_STATE",
+                    "Cannot change transaction " + transactionRef + " from " + status + " to " + next);
+        }
+        status = next;
+        updatedAt = now;
+    }
+
+    private static String truncate(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 
     public Long getId() { return id; }

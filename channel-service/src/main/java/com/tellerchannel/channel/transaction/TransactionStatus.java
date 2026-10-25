@@ -15,5 +15,20 @@ public enum TransactionStatus {
     /** THẤT BẠI: core từ chối rõ ràng, hoặc chắc chắn chưa tới core. Kết thúc. */
     FAILED,
     /** CHƯA RÕ: gửi rồi nhưng không nhận được trả lời. Chờ đối soát. */
-    UNKNOWN
+    UNKNOWN;
+
+    /** Bảng chuyển trạng thái hợp lệ. Mọi thay đổi trạng thái đều phải qua đây. */
+    public boolean canTransitionTo(TransactionStatus next) {
+        return switch (this) {
+            case INITIATED -> next == PENDING_APPROVAL;
+            case PENDING_APPROVAL -> next == SENT_TO_CORE || next == REJECTED;
+            case SENT_TO_CORE -> next == SUCCESS || next == FAILED || next == UNKNOWN;
+            case UNKNOWN -> next == SUCCESS || next == FAILED;
+            case REJECTED, SUCCESS, FAILED -> false;
+        };
+    }
+
+    public boolean isFinal() {
+        return this == REJECTED || this == SUCCESS || this == FAILED;
+    }
 }

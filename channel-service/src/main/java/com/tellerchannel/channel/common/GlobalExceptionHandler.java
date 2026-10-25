@@ -3,8 +3,10 @@ package com.tellerchannel.channel.common;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -36,6 +38,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ProblemDetail handleInvalidParameter(HandlerMethodValidationException ex) {
         return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request parameter");
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ProblemDetail handleMissingHeader(MissingRequestHeaderException ex) {
+        if ("Idempotency-Key".equalsIgnoreCase(ex.getHeaderName())) {
+            return problem(HttpStatus.BAD_REQUEST, "MISSING_IDEMPOTENCY_KEY", "Header Idempotency-Key is required");
+        }
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Missing header " + ex.getHeaderName());
+    }
+
+    /** Hai KSV duyệt cùng lúc: @Version lệch → người đến sau nhận 409, không ghi đè. */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return problem(HttpStatus.CONFLICT, "CONCURRENT_UPDATE",
+                "Transaction was modified by someone else, please reload");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
