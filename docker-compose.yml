@@ -1,0 +1,16 @@
+# Hạ tầng chạy kèm. Lệnh: docker compose up -d oracle
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: oracle          # mật khẩu SYS/SYSTEM, chỉ dùng cho môi trường học
+      APP_USER: teller                 # schema của channel-service
+      APP_USER_PASSWORD: teller
+    ports:
+      - "1521:1521"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
