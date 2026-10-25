@@ -53,6 +53,12 @@
 			<groupId>io.zipkin.reporter2</groupId>
 			<artifactId>zipkin-reporter-brave</artifactId>
 		</dependency>
+		<!-- Kafka: phát sự kiện "giao dịch đã kết thúc" cho hệ thống khác (SMS, báo cáo) -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
+
 		<!-- Flyway quản lý schema bằng file SQL có đánh version -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>

@@ -6,8 +6,10 @@ import com.tellerchannel.channel.core.CorePosting;
 import com.tellerchannel.channel.core.CorePostingRequest;
 import com.tellerchannel.channel.core.InquiryOutcome;
 import com.tellerchannel.channel.core.PostingOutcome;
+import com.tellerchannel.channel.events.TransactionCompletedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +32,14 @@ public class TransactionWriter {
 
     private final TellerTransactionRepository repository;
     private final AuditService auditService;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
-    public TransactionWriter(TellerTransactionRepository repository, AuditService auditService, Clock clock) {
+    public TransactionWriter(TellerTransactionRepository repository, AuditService auditService,
+                             ApplicationEventPublisher events, Clock clock) {
         this.repository = repository;
         this.auditService = auditService;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -76,6 +81,7 @@ public class TransactionWriter {
         TransactionStatus from = txn.getStatus();
         txn.reject(checker, reason, now());
         auditService.record(txn, "REJECT", from, checker, reason);
+        publishIfFinal(txn);
         return txn;
     }
 
@@ -109,6 +115,7 @@ public class TransactionWriter {
             }
         };
         auditService.record(txn, "CORE_RESULT", from, actor, detail);
+        publishIfFinal(txn);
         return txn;
     }
 
@@ -145,7 +152,15 @@ public class TransactionWriter {
                         txn.getReconcileAttempts(), u.reason());
             }
         }
+        publishIfFinal(txn);
         return txn;
+    }
+
+    /** Sự kiện chỉ thật sự được gửi đi sau khi transaction này commit (xem TransactionEventListener). */
+    private void publishIfFinal(TellerTransaction txn) {
+        if (txn.getStatus().isFinal()) {
+            events.publishEvent(TransactionCompletedEvent.of(txn));
+        }
     }
 
     private static boolean matches(TellerTransaction txn, CorePosting posting) {
