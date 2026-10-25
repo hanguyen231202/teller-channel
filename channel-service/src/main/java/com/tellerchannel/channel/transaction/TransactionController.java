@@ -2,6 +2,7 @@ package com.tellerchannel.channel.transaction;
 
 import com.tellerchannel.channel.audit.AuditLog;
 import com.tellerchannel.channel.common.PageResponse;
+import com.tellerchannel.channel.reconciliation.ReconciliationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,9 +29,11 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService service;
+    private final ReconciliationService reconciliationService;
 
-    public TransactionController(TransactionService service) {
+    public TransactionController(TransactionService service, ReconciliationService reconciliationService) {
         this.service = service;
+        this.reconciliationService = reconciliationService;
     }
 
     /** 201 khi tạo mới, 200 khi là request lặp (cùng Idempotency-Key). */
@@ -63,6 +66,13 @@ public class TransactionController {
     public TransactionResponse reject(@PathVariable Long id, @Valid @RequestBody RejectRequest request,
                                       Authentication auth) {
         return TransactionResponse.from(service.reject(id, auth.getName(), request.reason()));
+    }
+
+    /** KSV yêu cầu đối soát ngay một giao dịch CHƯA RÕ (vd. khách đang đứng chờ ở quầy). */
+    @PostMapping("/{id}/reconcile")
+    @PreAuthorize("hasRole('SUPERVISOR')")
+    public TransactionResponse reconcile(@PathVariable Long id) {
+        return TransactionResponse.from(reconciliationService.reconcileNow(id));
     }
 
     @GetMapping("/{id}")

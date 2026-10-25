@@ -2,7 +2,9 @@ package com.tellerchannel.channel.transaction;
 
 import com.tellerchannel.channel.audit.AuditService;
 import com.tellerchannel.channel.common.ApiException;
+import com.tellerchannel.channel.core.CorePosting;
 import com.tellerchannel.channel.core.CorePostingRequest;
+import com.tellerchannel.channel.core.InquiryOutcome;
 import com.tellerchannel.channel.core.PostingOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +110,48 @@ public class TransactionWriter {
         };
         auditService.record(txn, "CORE_RESULT", from, actor, detail);
         return txn;
+    }
+
+    /** Ghi kết quả đối soát (hỏi lại core bằng mã tham chiếu). */
+    @Transactional
+    public TellerTransaction applyInquiryOutcome(Long id, InquiryOutcome outcome, String actor) {
+        TellerTransaction txn = load(id);
+        TransactionStatus from = txn.getStatus();
+        if (from != TransactionStatus.UNKNOWN && from != TransactionStatus.SENT_TO_CORE) {
+            return txn;
+        }
+        Instant now = now();
+        switch (outcome) {
+            case InquiryOutcome.Found f when matches(txn, f.posting()) -> {
+                txn.markSuccess(f.posting().postingId(), now);
+                auditService.record(txn, "RECONCILE", from, actor,
+                        "Core has posting " + f.posting().postingId() + ": resolved as SUCCESS");
+            }
+            case InquiryOutcome.Found f -> {
+                // Core có bút toán nhưng số tiền/tài khoản khác: không tự chốt, cần người kiểm tra.
+                txn.recordReconcileAttempt(now);
+                auditService.record(txn, "RECONCILE_MISMATCH", from, actor,
+                        "Core posting " + f.posting().postingId() + " does not match transaction");
+                log.error("RECONCILIATION MISMATCH for {}: core posting {} {} on {}", txn.getTransactionRef(),
+                        f.posting().amount(), f.posting().currency(), f.posting().accountNo());
+            }
+            case InquiryOutcome.NotFound nf -> {
+                txn.markFailed("NOT_POSTED_AT_CORE", "Core has no posting for " + txn.getTransactionRef(), now);
+                auditService.record(txn, "RECONCILE", from, actor, "Core has no posting: resolved as FAILED");
+            }
+            case InquiryOutcome.Unavailable u -> {
+                txn.recordReconcileAttempt(now);
+                log.warn("Reconciliation of {} postponed (attempt {}): {}", txn.getTransactionRef(),
+                        txn.getReconcileAttempts(), u.reason());
+            }
+        }
+        return txn;
+    }
+
+    private static boolean matches(TellerTransaction txn, CorePosting posting) {
+        return txn.getAccountNo().equals(posting.accountNo())
+                && txn.getAmount().compareTo(posting.amount()) == 0
+                && txn.getCurrency().equals(posting.currency());
     }
 
     TellerTransaction load(Long id) {
