@@ -1,4 +1,5 @@
-# Hạ tầng chạy kèm. Lệnh: docker compose up -d oracle
+# Chạy cả hệ thống:      docker compose up -d --build
+# Chỉ chạy hạ tầng:      docker compose up -d oracle zipkin kafka   (rồi chạy 2 app bằng mvnw trên máy)
 services:
   oracle:
     image: gvenzl/oracle-free:23-slim-faststart
@@ -38,3 +39,29 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     ports:
       - "29092:29092"
+
+  core-mock:
+    build: ./core-mock
+    environment:
+      ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+    ports:
+      - "8081:8081"
+
+  channel-service:
+    build: ./channel-service
+    depends_on:
+      oracle:
+        condition: service_healthy     # chờ Oracle sẵn sàng rồi mới khởi động (Flyway cần DB)
+      core-mock:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: oracle
+      DB_URL: jdbc:oracle:thin:@//oracle:1521/FREEPDB1
+      CORE_BASE_URL: http://core-mock:8081
+      ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+      KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8080:8080"
