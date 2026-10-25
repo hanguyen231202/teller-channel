@@ -24,7 +24,7 @@ class AccountControllerTest {
 
     @Test
     void getAccount_existing_returns200WithBody() throws Exception {
-        when(accountService.findByAccountNo("23122002")).thenReturn(new Account("23122002", "NGUYEN THANH HA", "VND", new BigDecimal("1500000")));
+        when(accountService.findByAccountNo("23122002")).thenReturn(new Account("23122002", "NGUYEN THANH HA", "VND", new BigDecimal("1500000"), AccountStatus.ACTIVE));
         mockMvc.perform(get("/core/accounts/23122002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountNo").value("23122002"));
