@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -36,5 +37,13 @@ class AccountControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("ACCT_NOT_FOUND"))
                 .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    void getAccount_invalidFormat_returns400WithoutCallingService() throws Exception {
+        mockMvc.perform(get("/core/accounts/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(accountService);
     }
 }
