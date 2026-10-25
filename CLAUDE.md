@@ -42,15 +42,18 @@ Java 21, Spring Boot 3.x, Maven (dùng `mvnw`), JUnit 5 + Mockito, Docker. Tiề
   - [x] `AccountControllerTest` (`@WebMvcTest` + `@MockitoBean`): 200 / 404 — tổng 5 test xanh
   - Đã học: record vs static, checked/unchecked exception, check-then-act, `BigDecimal.equals` so cả scale → dùng `compareTo`, thứ tự `assertEquals(expected, actual)`, Conventional Commits, nhánh feature + PR
   - Đã học (buổi 2): luồng DispatcherServlet → controller, `@ExceptionHandler` local vs `@RestControllerAdvice` global, 500 vs 404 và ý nghĩa retry, slice test `@WebMvcTest`, matcher phải nằm trong `andExpect` (assert "giả" vẫn xanh), sửa kỳ vọng thành sai để chứng minh assert chạy
-- [ ] Tuần 1 – Ngày 2: (chưa lên kế hoạch) — gợi ý: validate định dạng số tài khoản (400), API hạch toán/chuyển khoản ở core-mock
+- [x] Tuần 1 – Ngày 2 → Tuần 3 – Ngày 4 (step 02–14): **Claude viết sẵn theo yêu cầu của Hà (25/10/2026)** trên nhánh
+  `feat/full-implementation`, mỗi step một commit (bảng mã commit + lệnh tạo tag `step-xx` trong `STEPS.md`).
+  - Hà đang đọc lại bản hoàn chỉnh rồi xem từng step; chưa tự gõ phần này.
+- [ ] Tuần 3 – Ngày 5: cập nhật CV, luyện kể project (dùng `docs/rca/RCA-001-core-timeout.md`, câu hỏi cuối mỗi step trong `STEPS.md`)
 (Cập nhật mục này sau mỗi buổi.)
 
 ## Quy tắc làm việc với Claude
 1. Trả lời bằng tiếng Việt; thuật ngữ kỹ thuật giữ tiếng Anh.
 2. Được phép làm hộ: cài đặt môi trường, cấu hình build/Docker, chạy lệnh, chạy test, đọc log lỗi.
-3. KHÔNG tự viết code nghiệp vụ (controller, service, adapter, state machine, đối soát, idempotency).
-   Thay vào đó: giải thích ngắn, gợi ý cấu trúc/chữ ký hàm, để người học tự gõ, rồi review.
-   Chỉ viết code mẫu khi người học yêu cầu rõ "viết giúp".
+3. Code nghiệp vụ step 02–14 đã được viết sẵn theo yêu cầu của Hà. Khi Hà hỏi về code: giải thích vì sao viết như vậy,
+   liên hệ câu hỏi phỏng vấn, và đặt câu hỏi kiểm tra hiểu. Code MỚI ngoài phạm vi đó vẫn theo nguyên tắc cũ:
+   gợi ý cấu trúc để Hà tự gõ, chỉ viết hộ khi Hà yêu cầu rõ "viết giúp".
 4. Khi review: chỉ ra lỗi, giải thích vì sao, liên hệ với tình huống ngân hàng thực tế.
 5. Mỗi buổi học: lý thuyết ngắn → việc code cụ thể → 3 câu hỏi phỏng vấn liên quan kèm ý trả lời.
 6. Commit nhỏ, message theo Conventional Commits.
