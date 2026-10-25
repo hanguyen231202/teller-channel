@@ -1,7 +1,9 @@
 package com.tellerchannel.coremock;
 
-public class AccountNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class AccountNotFoundException extends CoreBusinessException {
     public AccountNotFoundException(String accountNo) {
-        super("Account not found: " + accountNo);
+        super(HttpStatus.NOT_FOUND, "ACCT_NOT_FOUND", "Account not found: " + accountNo);
     }
 }

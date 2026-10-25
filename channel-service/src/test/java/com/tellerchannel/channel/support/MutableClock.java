@@ -1,0 +1,36 @@
+package com.tellerchannel.channel.support;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
+/** Đồng hồ cho test: tua nhanh thời gian thay vì Thread.sleep. */
+public class MutableClock extends Clock {
+
+    private Instant now;
+
+    public MutableClock(Instant start) {
+        this.now = start;
+    }
+
+    public synchronized void advance(Duration d) {
+        now = now.plus(d);
+    }
+
+    @Override
+    public synchronized Instant instant() {
+        return now;
+    }
+
+    @Override
+    public ZoneId getZone() {
+        return ZoneOffset.UTC;
+    }
+
+    @Override
+    public Clock withZone(ZoneId zone) {
+        return this;
+    }
+}

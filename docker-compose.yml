@@ -1,0 +1,67 @@
+# Chạy cả hệ thống:      docker compose up -d --build
+# Chỉ chạy hạ tầng:      docker compose up -d oracle zipkin kafka   (rồi chạy 2 app bằng mvnw trên máy)
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: oracle          # mật khẩu SYS/SYSTEM, chỉ dùng cho môi trường học
+      APP_USER: teller                 # schema của channel-service
+      APP_USER_PASSWORD: teller
+    ports:
+      - "1521:1521"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    ports:
+      - "9411:9411"                    # giao diện: http://localhost:9411
+
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller           # KRaft: không cần ZooKeeper
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:29092
+      # Container khác gọi kafka:9092, máy host gọi localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "29092:29092"
+
+  core-mock:
+    build: ./core-mock
+    environment:
+      ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+    ports:
+      - "8081:8081"
+
+  channel-service:
+    build: ./channel-service
+    depends_on:
+      oracle:
+        condition: service_healthy     # chờ Oracle sẵn sàng rồi mới khởi động (Flyway cần DB)
+      core-mock:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: oracle
+      DB_URL: jdbc:oracle:thin:@//oracle:1521/FREEPDB1
+      CORE_BASE_URL: http://core-mock:8081
+      ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+      KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8080:8080"

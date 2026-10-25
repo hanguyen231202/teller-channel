@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teller Channel</title>
+<!--
+  Màn hình demo tối giản (HTML + JavaScript thuần, không framework) để trình diễn luồng maker-checker.
+  Dự án thật ở ngân hàng thường làm bằng Angular; ở đây chỉ cần đủ để demo khi phỏng vấn.
+-->
+<style>
+  :root { --bg:#f5f7f6; --card:#fff; --fg:#17211f; --muted:#5b6a65; --line:#d8e0dd; --accent:#0d6b5f;
+          --ok:#1d7a3a; --bad:#b3261e; --warn:#9a5b00; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--fg); }
+  header { background:var(--accent); color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; margin:0; }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; }
+  .card h2 { font-size:16px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:8px; }
+  input, select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+  .row { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:7px 14px; font:inherit; cursor:pointer; }
+  button.secondary { background:#e6ecea; color:var(--fg); }
+  button.danger { background:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); text-transform:uppercase; }
+  .table-wrap { overflow-x:auto; }
+  .badge { font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; background:#e6ecea; white-space:nowrap; }
+  .SUCCESS { background:#dcf1e2; color:var(--ok); } .FAILED, .REJECTED { background:#f8dedc; color:var(--bad); }
+  .UNKNOWN { background:#fbf0dc; color:var(--warn); } .PENDING_APPROVAL { background:#e2ecf8; color:#1f4f8a; }
+  #msg { padding:10px 14px; border-radius:6px; display:none; white-space:pre-wrap; }
+  #msg.err { display:block; background:#f8dedc; color:var(--bad); } #msg.ok { display:block; background:#dcf1e2; color:var(--ok); }
+  .muted { color:var(--muted); font-size:13px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header><h1>Teller Channel</h1><span id="who"></span></header>
+<main>
+  <div id="msg"></div>
+
+  <section class="card" id="loginCard">
+    <h2>Đăng nhập</h2>
+    <div class="row">
+      <label>Tên đăng nhập
+        <select id="username">
+          <option value="gdv01">gdv01 (Giao dịch viên)</option>
+          <option value="gdv02">gdv02 (Giao dịch viên)</option>
+          <option value="ksv01">ksv01 (Kiểm soát viên)</option>
+          <option value="ksv02">ksv02 (Kiểm soát viên)</option>
+        </select></label>
+      <label>Mật khẩu <input id="password" type="password" value="Teller@123"></label>
+    </div>
+    <button onclick="login()">Đăng nhập</button>
+  </section>
+
+  <section class="card hidden" id="accountCard">
+    <h2>Tra cứu tài khoản <span class="muted">(số dư lấy trực tiếp từ core)</span></h2>
+    <div class="row">
+      <label>Số tài khoản <input id="lookupNo" value="23122002"></label>
+    </div>
+    <button onclick="lookup()">Tra cứu</button>
+    <p id="accountInfo" class="muted"></p>
+  </section>
+
+  <section class="card hidden teller" id="createCard">
+    <h2>Lập giao dịch</h2>
+    <div class="row">
+      <label>Loại <select id="type"><option value="WITHDRAWAL">Rút tiền</option><option value="DEPOSIT">Nộp tiền</option></select></label>
+      <label>Số tài khoản <input id="accountNo" value="23122002"></label>
+      <label>Số tiền (VND) <input id="amount" type="number" value="100000" min="1"></label>
+      <label>Diễn giải <input id="description" value="Giao dich tai quay"></label>
+    </div>
+    <button onclick="createTxn()">Lập giao dịch</button>
+    <p class="muted">Idempotency-Key của lần bấm này: <code id="idemKey"></code> (giữ nguyên nếu bấm lại do lỗi mạng)</p>
+  </section>
+
+  <section class="card hidden">
+    <h2 id="listTitle">Giao dịch</h2>
+    <div class="row">
+      <label>Lọc trạng thái
+        <select id="filter" onchange="loadList()">
+          <option value="">Tất cả</option><option value="INITIATED">KHỞI TẠO</option>
+          <option value="PENDING_APPROVAL">CHỜ DUYỆT</option><option value="UNKNOWN">CHƯA RÕ</option>
+          <option value="SUCCESS">THÀNH CÔNG</option><option value="FAILED">THẤT BẠI</option><option value="REJECTED">TỪ CHỐI</option>
+        </select></label>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>ID</th><th>Loại</th><th>Tài khoản</th><th>Số tiền</th><th>Trạng thái</th><th>Lập / Duyệt</th><th>Chi tiết</th><th></th></tr></thead>
+      <tbody id="rows"></tbody></table>
+    </div>
+    <button class="secondary" onclick="loadList()">Tải lại</button>
+  </section>
+</main>
+
+<script>
+const STATUS_VI = { INITIATED:'KHỞI TẠO', PENDING_APPROVAL:'CHỜ DUYỆT', REJECTED:'TỪ CHỐI', SENT_TO_CORE:'ĐÃ GỬI CORE',
+                    SUCCESS:'THÀNH CÔNG', FAILED:'THẤT BẠI', UNKNOWN:'CHƯA RÕ – KHÔNG CHI TIỀN' };
+let token = null, me = null, idemKey = crypto.randomUUID();
+document.getElementById('idemKey').textContent = idemKey;
+
+function show(text, ok) {
+  const m = document.getElementById('msg');
+  m.textContent = text; m.className = ok ? 'ok' : 'err';
+}
+
+/** Gọi API kèm JWT. Lỗi ProblemDetail được hiện kèm mã lỗi và X-Trace-Id để tra log. */
+async function api(method, path, body, extraHeaders = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extraHeaders };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const trace = res.headers.get('X-Trace-Id');
+    throw new Error(`${res.status} ${data.code || ''}: ${data.detail || ''}` + (trace ? `\nTrace ID: ${trace}` : ''));
+  }
+  return data;
+}
+
+async function login() {
+  try {
+    const r = await api('POST', '/api/auth/login', {
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value });
+    token = r.accessToken; me = r;
+    document.getElementById('who').textContent = `${r.username} · ${r.roles.join(', ')}`;
+    document.querySelectorAll('.card.hidden').forEach(c => {
+      if (!c.classList.contains('teller') || r.roles.includes('TELLER')) c.classList.remove('hidden');
+    });
+    document.getElementById('loginCard').classList.add('hidden');
+    const isSup = r.roles.includes('SUPERVISOR');
+    document.getElementById('filter').value = isSup ? 'PENDING_APPROVAL' : '';
+    document.getElementById('listTitle').textContent = isSup ? 'Giao dịch cần xử lý' : 'Giao dịch';
+    show('Đăng nhập thành công', true);
+    loadList();
+  } catch (e) { show(e.message); }
+}
+
+async function lookup() {
+  try {
+    const a = await api('GET', '/api/accounts/' + document.getElementById('lookupNo').value.trim());
+    document.getElementById('accountInfo').textContent =
+      `${a.accountName} · ${Number(a.balance).toLocaleString('vi-VN')} ${a.currency} · ${a.status}`;
+  } catch (e) { show(e.message); }
+}
+
+async function createTxn() {
+  try {
+    const t = await api('POST', '/api/transactions', {
+      type: document.getElementById('type').value,
+      accountNo: document.getElementById('accountNo').value.trim(),
+      amount: Number(document.getElementById('amount').value),
+      currency: 'VND',
+      description: document.getElementById('description').value }, { 'Idempotency-Key': idemKey });
+    show(`Đã lập giao dịch #${t.id} (${t.transactionRef}). Bấm "Gửi duyệt" ở danh sách.`, true);
+    idemKey = crypto.randomUUID();   // thành công rồi mới đổi key cho giao dịch tiếp theo
+    document.getElementById('idemKey').textContent = idemKey;
+    loadList();
+  } catch (e) { show(e.message); }
+}
+
+async function act(id, action) {
+  try {
+    let body;
+    if (action === 'reject') {
+      const reason = prompt('Lý do từ chối?');
+      if (!reason) return;
+      body = { reason };
+    }
+    const t = await api('POST', `/api/transactions/${id}/${action}`, body);
+    show(`Giao dịch #${t.id}: ${STATUS_VI[t.status] || t.status}` + (t.coreErrorCode ? ` (${t.coreErrorCode})` : ''),
+         t.status !== 'FAILED' && t.status !== 'UNKNOWN');
+    loadList();
+  } catch (e) { show(e.message); }
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadList() {
+  try {
+    const status = document.getElementById('filter').value;
+    const page = await api('GET', '/api/transactions?size=50' + (status ? '&status=' + status : ''));
+    const isTeller = me.roles.includes('TELLER'), isSup = me.roles.includes('SUPERVISOR');
+    document.getElementById('rows').innerHTML = page.content.map(t => {
+      let buttons = '';
+      if (isTeller && t.status === 'INITIATED' && t.makerId === me.username)
+        buttons = `<button onclick="act(${t.id},'submit')">Gửi duyệt</button>`;
+      if (isSup && t.status === 'PENDING_APPROVAL')
+        buttons = `<button onclick="act(${t.id},'approve')">Duyệt</button> <button class="danger" onclick="act(${t.id},'reject')">Từ chối</button>`;
+      if (isSup && (t.status === 'UNKNOWN' || t.status === 'SENT_TO_CORE'))
+        buttons = `<button onclick="act(${t.id},'reconcile')">Đối soát ngay</button>`;
+      const detail = t.corePostingId || t.coreErrorCode || t.rejectReason || '';
+      return `<tr><td>${t.id}</td><td>${t.type === 'WITHDRAWAL' ? 'Rút' : 'Nộp'}</td><td>${esc(t.accountNo)}</td>
+        <td>${Number(t.amount).toLocaleString('vi-VN')}</td>
+        <td><span class="badge ${t.status}">${STATUS_VI[t.status] || t.status}</span></td>
+        <td>${esc(t.makerId)} / ${esc(t.checkerId || '–')}</td><td class="muted">${esc(detail)}</td><td>${buttons}</td></tr>`;
+    }).join('') || '<tr><td colspan="8" class="muted">Không có giao dịch</td></tr>';
+  } catch (e) { show(e.message); }
+}
+</script>
+</body>
+</html>
