@@ -7,6 +7,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.util.stream.Collectors;
 
@@ -30,6 +31,11 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + " " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", detail);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ProblemDetail handleInvalidParameter(HandlerMethodValidationException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request parameter");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
